@@ -99,6 +99,39 @@ describe("geojsonToNetjson conversion", () => {
       });
     });
 
+    test("MultiPoint suffixed ids do not collide with other feature ids", () => {
+      const result = geojsonToNetjson(
+        collection(
+          {
+            type: "Feature",
+            id: "mp",
+            properties: {},
+            geometry: {
+              type: "MultiPoint",
+              coordinates: [
+                [1, 2],
+                [3, 4],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            id: "mp_0",
+            properties: {},
+            geometry: {type: "Point", coordinates: [5, 6]},
+          },
+        ),
+      );
+      const ids = result.nodes.map((n) => n.id);
+      expect(ids).toHaveLength(3);
+      expect(new Set(ids).size).toBe(3);
+      // the standalone Point keeps its own id
+      expect(ids).toContain("mp_0");
+      const multiNodes = result.nodes.filter((n) => n.properties.id === "mp");
+      expect(multiNodes).toHaveLength(2);
+      multiNodes.forEach((n) => expect(n.label).toBe("mp"));
+    });
+
     test("a Point on a line vertex stays its own node", () => {
       const result = geojsonToNetjson(
         collection(

@@ -23,6 +23,32 @@ export function geojsonToNetjson(geojson) {
   // MultiLineString features, so that lines which meet share one node.
   const coordMap = new Map();
 
+  // Every explicit id in the collection, collected up front so that a
+  // suffixed MultiPoint id never takes an id another feature already uses,
+  // even when that feature comes later (e.g. MultiPoint "mp" and Point "mp_0").
+  const usedIds = new Set();
+  geojson.features.forEach((feature) => {
+    const props = (feature && feature.properties) || {};
+    const explicitId =
+      feature && feature.id !== undefined && feature.id !== null
+        ? feature.id
+        : props.id || props.node_id;
+    if (explicitId) {
+      usedIds.add(String(explicitId));
+    }
+  });
+
+  // Return the first `${base}_${n}` (n >= start) not used by any other node.
+  const uniqueSuffixedId = (base, start) => {
+    let n = start;
+    while (usedIds.has(`${base}_${n}`)) {
+      n += 1;
+    }
+    const id = `${base}_${n}`;
+    usedIds.add(id);
+    return id;
+  };
+
   // Always create a new node and return its id. Features that are Points are
   // independent locations, so they must never be merged with another node.
   const createNode = (coord, baseProps = {}, idSuffix = null) => {
@@ -32,11 +58,16 @@ export function geojsonToNetjson(geojson) {
     const displayLabel = baseProps.label || baseProps.name || providedId || null;
 
     // A MultiPoint creates several nodes from one feature, so its explicit id
-    // gets a suffix to keep every graph id unique. The original id stays in
-    // properties.id.
-    const newId = providedId
-      ? `${providedId}${idSuffix === null ? "" : `_${idSuffix}`}`
-      : `gjn_${nodes.length}`;
+    // gets a suffix that no other feature uses, keeping every graph id unique.
+    // The original id stays in properties.id and in the label.
+    let newId;
+    if (!providedId) {
+      newId = `gjn_${nodes.length}`;
+    } else if (idSuffix === null) {
+      newId = providedId;
+    } else {
+      newId = uniqueSuffixedId(providedId, idSuffix);
+    }
     const generatedIdentity = !providedId;
 
     const node = {
