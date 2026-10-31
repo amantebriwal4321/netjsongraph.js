@@ -55,7 +55,8 @@ export function geojsonToNetjson(geojson) {
     // If the data source specifies an identifier (or label) keep it public,
     // otherwise generate an internal id and flag it so UI layers can hide it.
     const providedId = baseProps.id || baseProps.node_id || null;
-    const displayLabel = baseProps.label || baseProps.name || providedId || null;
+    const displayLabel =
+      baseProps.label || baseProps.name || providedId || null;
 
     // A MultiPoint creates several nodes from one feature, so its explicit id
     // gets a suffix that no other feature uses, keeping every graph id unique.
@@ -131,7 +132,11 @@ export function geojsonToNetjson(geojson) {
         break;
       case "LineString":
         // Tag nodes coming from line geometries
-        processCoordsSeq(coordinates, {...props, _featureType: "LineString"}, false);
+        processCoordsSeq(
+          coordinates,
+          {...props, _featureType: "LineString"},
+          false,
+        );
         break;
       case "MultiLineString":
         coordinates.forEach((line) =>
@@ -155,7 +160,9 @@ export function geojsonToNetjson(geojson) {
     const baseProps = {
       ...(feature.properties || {}),
       // Preserve original GeoJSON feature id (location primary-key) if present.
-      ...(feature.id !== undefined && feature.id !== null ? {id: feature.id} : {}),
+      ...(feature.id !== undefined && feature.id !== null
+        ? {id: feature.id}
+        : {}),
     };
 
     handleGeometry(feature.geometry, baseProps);
